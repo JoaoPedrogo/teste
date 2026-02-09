@@ -2608,8 +2608,7 @@ function RayfieldLibrary:CreateWindow(Settings)
 			local ChartValue = {}
 			local ChartData = ChartSettings.Data or {}
 
-			local ChartFrame = Elements.Template.SectionTitle:Clone() -- Using SectionTitle as base container or we create a new frame
-			-- Actually let's just make a new container frame manually to be safe
+			local ChartFrame = Elements.Template.SectionTitle:Clone()
 			if ChartFrame then ChartFrame:Destroy() end
 
 			local ChartContainer = Instance.new("Frame")
@@ -2618,7 +2617,7 @@ function RayfieldLibrary:CreateWindow(Settings)
 			ChartContainer.BackgroundColor3 = SelectedTheme.ElementBackground
 			ChartContainer.BackgroundTransparency = 1
 			ChartContainer.BorderSizePixel = 0
-			ChartContainer.Size = UDim2.new(1, -10, 0, 180) -- Fixed height for chart
+			ChartContainer.Size = UDim2.new(1, -10, 0, 210) -- Increased height for better layout
 			
 			local ChartUIStroke = Instance.new("UIStroke")
 			ChartUIStroke.Parent = ChartContainer
@@ -2637,30 +2636,61 @@ function RayfieldLibrary:CreateWindow(Settings)
 			ChartTitle.TextSize = 14
 			ChartTitle.TextXAlignment = Enum.TextXAlignment.Left
 			ChartTitle.TextTransparency = 1
+			
+			-- Subtitle / Value Indicator (Optional)
+			-- local ChartValueLabel = Instance.new("TextLabel") ...
 
-			local ChartCanvas = Instance.new("Frame")
+			local ChartCanvasContainer = Instance.new("Frame")
+			ChartCanvasContainer.Name = "CanvasContainer"
+			ChartCanvasContainer.Parent = ChartContainer
+			ChartCanvasContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 20) -- Darker background for chart area
+			ChartCanvasContainer.BackgroundTransparency = 1
+			ChartCanvasContainer.Position = UDim2.new(0, 10, 0, 40)
+			ChartCanvasContainer.Size = UDim2.new(1, -20, 1, -50)
+			
+			local CanvasContainerCorner = Instance.new("UICorner")
+			CanvasContainerCorner.CornerRadius = UDim.new(0, 4)
+			CanvasContainerCorner.Parent = ChartCanvasContainer
+			
+			local ChartCanvas = Instance.new("Frame") -- Actual drawing area, slightly padded
 			ChartCanvas.Name = "Canvas"
-			ChartCanvas.Parent = ChartContainer
-			ChartCanvas.BackgroundColor3 = SelectedTheme.SecondaryElementBackground
+			ChartCanvas.Parent = ChartCanvasContainer
 			ChartCanvas.BackgroundTransparency = 1
-			ChartCanvas.Position = UDim2.new(0, 10, 0, 40)
-			ChartCanvas.Size = UDim2.new(1, -20, 1, -50)
+			ChartCanvas.Position = UDim2.new(0, 10, 0, 10) -- Padding inside container
+			ChartCanvas.Size = UDim2.new(1, -20, 1, -20)
 			
-			local CanvasCorner = Instance.new("UICorner")
-			CanvasCorner.CornerRadius = UDim.new(0, 4)
-			CanvasCorner.Parent = ChartCanvas
+			-- Y-Axis Labels
+			local LabelMax = Instance.new("TextLabel")
+			LabelMax.Parent = ChartCanvasContainer
+			LabelMax.BackgroundTransparency = 1
+			LabelMax.Position = UDim2.new(0, 5, 0, 5)
+			LabelMax.Size = UDim2.new(0, 30, 0, 15)
+			LabelMax.Font = Enum.Font.Gotham
+			LabelMax.Text = "100"
+			LabelMax.TextColor3 = Color3.fromRGB(150, 150, 150)
+			LabelMax.TextSize = 10
+			LabelMax.TextXAlignment = Enum.TextXAlignment.Left
+			LabelMax.TextTransparency = 1
 			
-			local CanvasStroke = Instance.new("UIStroke")
-			CanvasStroke.Parent = ChartCanvas
-			CanvasStroke.Color = SelectedTheme.SecondaryElementStroke
-			CanvasStroke.Transparency = 1
+			local LabelMin = Instance.new("TextLabel")
+			LabelMin.Parent = ChartCanvasContainer
+			LabelMin.BackgroundTransparency = 1
+			LabelMin.Position = UDim2.new(0, 5, 1, -20)
+			LabelMin.Size = UDim2.new(0, 30, 0, 15)
+			LabelMin.Font = Enum.Font.Gotham
+			LabelMin.Text = "0"
+			LabelMin.TextColor3 = Color3.fromRGB(150, 150, 150)
+			LabelMin.TextSize = 10
+			LabelMin.TextXAlignment = Enum.TextXAlignment.Left
+			LabelMin.TextTransparency = 1
 
 			-- Animate In
 			TweenService:Create(ChartContainer, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
 			TweenService:Create(ChartUIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0}):Play()
 			TweenService:Create(ChartTitle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
-			TweenService:Create(ChartCanvas, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-			TweenService:Create(CanvasStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0}):Play()
+			TweenService:Create(ChartCanvasContainer, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
+			TweenService:Create(LabelMax, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+			TweenService:Create(LabelMin, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
 
 			--// Drawing Logic
 			local function DrawLine(p1, p2, parent, color)
@@ -2671,16 +2701,12 @@ function RayfieldLibrary:CreateWindow(Settings)
 				local Line = Instance.new("Frame")
 				Line.Name = "Line"
 				Line.Parent = parent
-				Line.Size = UDim2.new(0, dist, 0, 2)
+				Line.Size = UDim2.new(0, dist, 0, 2) -- Thinner lines look sharper
 				Line.Position = UDim2.new(0, (p1.X + p2.X) / 2, 0, (p1.Y + p2.Y) / 2)
 				Line.AnchorPoint = Vector2.new(0.5, 0.5)
-				Line.BackgroundColor3 = color or ChartSettings.Color or Color3.fromRGB(0, 146, 214) -- Default Rayfield Blue
+				Line.BackgroundColor3 = color or ChartSettings.Color or Color3.fromRGB(0, 146, 214)
 				Line.BorderSizePixel = 0
 				Line.Rotation = math.deg(angle)
-				
-				local Corner = Instance.new("UICorner")
-				Corner.CornerRadius = UDim.new(1, 0)
-				Corner.Parent = Line
 				
 				return Line
 			end
@@ -2704,9 +2730,13 @@ function RayfieldLibrary:CreateWindow(Settings)
 					if val < MinVal then MinVal = val end
 				end
 				
-				-- Add padding to range so lines don't touch edges perfectly
+				-- Update Labels
+				LabelMax.Text = tostring(math.ceil(MaxVal))
+				LabelMin.Text = tostring(math.floor(MinVal))
+				
+				-- Add padding to range
 				local Range = MaxVal - MinVal
-				if Range == 0 then Range = 1 end -- Avoid div by 0
+				if Range == 0 then Range = 1 end
 				
 				local Width = ChartCanvas.AbsoluteSize.X
 				local Height = ChartCanvas.AbsoluteSize.Y
@@ -2716,12 +2746,8 @@ function RayfieldLibrary:CreateWindow(Settings)
 				-- Calculate Points
 				for i, val in ipairs(NewData) do
 					local x = ((i - 1) / (#NewData - 1)) * Width
-					-- In GUI Y is significantly inverted (0 is top), so we do 1 - normalized
 					local normalizedY = (val - MinVal) / Range
 					local y = Height - (normalizedY * Height)
-					
-					-- Clamp to be safe
-					-- y = math.clamp(y, 0, Height) -- Optional if data is clean
 					
 					table.insert(Points, Vector2.new(x, y))
 					
@@ -2729,32 +2755,50 @@ function RayfieldLibrary:CreateWindow(Settings)
 					local Point = Instance.new("Frame")
 					Point.Name = "Point"
 					Point.Parent = ChartCanvas
-					Point.Size = UDim2.new(0, 6, 0, 6)
+					Point.Size = UDim2.new(0, 4, 0, 4) -- Smaller points
 					Point.Position = UDim2.new(0, x, 0, y)
 					Point.AnchorPoint = Vector2.new(0.5, 0.5)
 					Point.BackgroundColor3 = ChartSettings.Color or Color3.fromRGB(0, 146, 214)
 					Point.BorderSizePixel = 0
-					Point.ZIndex = 2 -- On top of lines
+					Point.ZIndex = 2
 					
 					local PCorner = Instance.new("UICorner")
 					PCorner.CornerRadius = UDim.new(1, 0)
 					PCorner.Parent = Point
 					
-					-- Tooltip on hover (simple)
+					-- Simple Glow effect (Stroke)
+					local PStroke = Instance.new("UIStroke")
+					PStroke.Parent = Point
+					PStroke.Color = ChartSettings.Color or Color3.fromRGB(0, 146, 214)
+					PStroke.Thickness = 1
+					PStroke.Transparency = 0.5
+					
+					-- Tooltip
 					local Tooltip = Instance.new("TextLabel")
 					Tooltip.Parent = Point
-					Tooltip.Size = UDim2.new(0, 30, 0, 15)
-					Tooltip.Position = UDim2.new(0.5, 0, 0, -15)
+					Tooltip.Size = UDim2.new(0, 40, 0, 20)
+					Tooltip.Position = UDim2.new(0.5, 0, 0, -20)
 					Tooltip.AnchorPoint = Vector2.new(0.5, 1)
-					Tooltip.BackgroundTransparency = 1
+					Tooltip.BackgroundTransparency = 0.2
+					Tooltip.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 					Tooltip.Text = tostring(val)
-					Tooltip.TextColor3 = SelectedTheme.TextColor
+					Tooltip.TextColor3 = Color3.fromRGB(255, 255, 255)
 					Tooltip.TextSize = 10
 					Tooltip.Font = Enum.Font.Gotham
 					Tooltip.Visible = false
 					
-					Point.MouseEnter:Connect(function() Tooltip.Visible = true; TweenService:Create(Point, TweenInfo.new(0.1), {Size = UDim2.new(0, 8, 0, 8)}):Play() end)
-					Point.MouseLeave:Connect(function() Tooltip.Visible = false; TweenService:Create(Point, TweenInfo.new(0.1), {Size = UDim2.new(0, 6, 0, 6)}):Play() end)
+					local TCorner = Instance.new("UICorner")
+					TCorner.CornerRadius = UDim.new(0, 4)
+					TCorner.Parent = Tooltip
+					
+					Point.MouseEnter:Connect(function() 
+						Tooltip.Visible = true; 
+						TweenService:Create(Point, TweenInfo.new(0.1), {Size = UDim2.new(0, 8, 0, 8)}):Play() 
+					end)
+					Point.MouseLeave:Connect(function() 
+						Tooltip.Visible = false; 
+						TweenService:Create(Point, TweenInfo.new(0.1), {Size = UDim2.new(0, 4, 0, 4)}):Play() 
+					end)
 				end
 				
 				-- Draw Lines Connecting Points
@@ -2763,13 +2807,11 @@ function RayfieldLibrary:CreateWindow(Settings)
 				end
 			end
 			
-			-- Initial Draw
 			task.spawn(function()
-				task.wait(0.1) -- Wait for AbsoluteSize to exist
+				task.wait(0.1)
 				UpdateChart(ChartData)
 			end)
 			
-			-- Handle resizing if needed (basic)
 			ChartCanvas:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
 				UpdateChart(ChartData)
 			end)
@@ -2779,7 +2821,7 @@ function RayfieldLibrary:CreateWindow(Settings)
 				UpdateChart(ChartData)
 			end
 			
-			function ChartValue:Update(NewData) -- Alias
+			function ChartValue:Update(NewData)
 				ChartValue:Set(NewData)
 			end
 
