@@ -2919,6 +2919,148 @@ function RayfieldLibrary:CreateWindow(Settings)
 			return ChartValue
 		end
 
+		-- 3D Preview Element (ViewportFrame)
+		function Tab:Create3DPreview(PreviewSettings)
+			local PreviewValue = {}
+			local PreviewModel = PreviewSettings.Model
+			
+			local PreviewFrame = Elements.Template.SectionTitle:Clone()
+			if PreviewFrame then PreviewFrame:Destroy() end
+
+			local PreviewContainer = Instance.new("Frame")
+			PreviewContainer.Name = PreviewSettings.Name or "3D Preview"
+			PreviewContainer.Parent = TabPage
+			PreviewContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+			PreviewContainer.BackgroundTransparency = 0
+			PreviewContainer.BorderSizePixel = 0
+			PreviewContainer.Size = UDim2.new(1, -10, 0, 200) -- Default height
+			
+			local ContainerCorner = Instance.new("UICorner")
+			ContainerCorner.CornerRadius = UDim.new(0, 8)
+			ContainerCorner.Parent = PreviewContainer
+			
+			local PreviewUIStroke = Instance.new("UIStroke")
+			PreviewUIStroke.Parent = PreviewContainer
+			PreviewUIStroke.Color = SelectedTheme.ElementStroke
+			PreviewUIStroke.Transparency = 1
+			
+			-- Title
+			local PreviewTitle = Instance.new("TextLabel")
+			PreviewTitle.Name = "Title"
+			PreviewTitle.Parent = PreviewContainer
+			PreviewTitle.BackgroundTransparency = 1
+			PreviewTitle.Position = UDim2.new(0, 15, 0, 10)
+			PreviewTitle.Size = UDim2.new(1, -30, 0, 20)
+			PreviewTitle.Font = Enum.Font.GothamBold
+			PreviewTitle.Text = PreviewSettings.Name or "Preview"
+			PreviewTitle.TextColor3 = SelectedTheme.TextColor
+			PreviewTitle.TextSize = 14
+			PreviewTitle.TextXAlignment = Enum.TextXAlignment.Left
+			PreviewTitle.TextTransparency = 1
+			
+			-- Viewport Container
+			local ViewportContainer = Instance.new("Frame")
+			ViewportContainer.Name = "ViewportContainer"
+			ViewportContainer.Parent = PreviewContainer
+			ViewportContainer.BackgroundTransparency = 1
+			ViewportContainer.Position = UDim2.new(0, 10, 0, 35)
+			ViewportContainer.Size = UDim2.new(1, -20, 1, -45)
+			
+			local Viewport = Instance.new("ViewportFrame")
+			Viewport.Parent = ViewportContainer
+			Viewport.BackgroundTransparency = 1
+			Viewport.Size = UDim2.new(1, 0, 1, 0)
+			Viewport.Ambient = Color3.fromRGB(200, 200, 200)
+			Viewport.LightColor = Color3.fromRGB(255, 255, 255)
+			Viewport.LightDirection = Vector3.new(1, 1, 1)
+			
+			local WorldModel = Instance.new("WorldModel")
+			WorldModel.Parent = Viewport
+			
+			local Camera = Instance.new("Camera")
+			Camera.Parent = Viewport
+			Viewport.CurrentCamera = Camera
+			
+			-- Animate In
+			TweenService:Create(PreviewContainer, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
+			TweenService:Create(PreviewUIStroke, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {Transparency = 0}):Play()
+			TweenService:Create(PreviewTitle, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+			
+			local RotateConnection
+			local function UpdateModel(NewModel)
+				-- Clear Old
+				for _, c in pairs(WorldModel:GetChildren()) do c:Destroy() end
+				if RotateConnection then RotateConnection:Disconnect() end
+				
+				if not NewModel then return end
+				
+				local ClonedModel = NewModel:Clone()
+				ClonedModel.Parent = WorldModel
+				
+				-- Center Camera
+				local cf, size = ClonedModel:GetBoundingBox()
+				ClonedModel.PrimaryPart = ClonedModel.PrimaryPart or ClonedModel:FindFirstChild("HumanoidRootPart") or ClonedModel:FindFirstChildWhichIsA("BasePart")
+				
+				if ClonedModel.PrimaryPart then
+					ClonedModel:SetPrimaryPartCFrame(CFrame.new(Vector3.new(0,0,0))) -- Reset position to origin
+				else
+					-- Fallback if no PrimaryPart
+					ClonedModel:MoveTo(Vector3.new(0,0,0))
+				end
+				
+				-- Calculate optimal distance
+				local maxDimension = math.max(size.X, size.Y, size.Z)
+				local distance = maxDimension * 1.5 
+				if distance < 5 then distance = 5 end -- Minimum distance
+				
+				-- Initial Position
+				Camera.CFrame = CFrame.new(Vector3.new(0, 0, distance), Vector3.new(0, 0, 0))
+				
+				-- Auto Rotate
+				if PreviewSettings.AutoRotate ~= false then
+					RotateConnection = RunService.RenderStepped:Connect(function()
+						local t = tick()
+						local angle = t * 1 -- Rotate speed
+						local x = math.sin(angle) * distance
+						local z = math.cos(angle) * distance
+						Camera.CFrame = CFrame.new(Vector3.new(x, size.Y/2, z), Vector3.new(0, 0, 0))
+					end)
+				end
+			end
+			
+			-- Initial Load
+			if PreviewSettings.Model then
+				-- If string path provided, resolve it
+				if type(PreviewSettings.Model) == "string" then
+					local success, result = pcall(function()
+						local segments = PreviewSettings.Model:split(".")
+						local current = game
+						for _, seg in ipairs(segments) do
+							if seg ~= "game" and seg ~= "workspace" then -- Basic handling
+								current = current[seg]
+							elseif seg == "workspace" then
+								current = workspace
+							end
+						end
+						return current
+					end)
+					if success and result then
+						UpdateModel(result)
+					else
+						warn("Rayfield: Could not find model at path: " .. PreviewSettings.Model)
+					end
+				else
+					UpdateModel(PreviewSettings.Model)
+				end
+			end
+			
+			function PreviewValue:Update(NewModel)
+				UpdateModel(NewModel)
+			end
+			
+			return PreviewValue
+		end
+
 		-- Input
 		function Tab:CreateInput(InputSettings)
 			local Input = Elements.Template.Input:Clone()
